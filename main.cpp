@@ -16,7 +16,7 @@
 
 DEFINE_bool(log_console, true, "show log console");
 DEFINE_string(model_file, "best.onnx", "model file format of onnx or engine");
-DEFINE_string(input_dims, "", "input image dimensions as NCHW: 1,1,960,1280");
+DEFINE_string(input_dims, "", "input image dimensions as NCHW(name:1,1,960,1280;name:1,1,960,1280)");
 DEFINE_string(image_file, "images/*.png", "image file name or pattern");
 DEFINE_string(output_dir, "results/", "output result directory");
 
@@ -141,29 +141,42 @@ int main(int argc, char **argv) {
     }
     SPDLOG_INFO("TensorRT total files: {}", all_files.size());
 
-    std::vector<int64_t> input_dims;
+    std::map<std::string, std::vector<int64_t>> dimensions;
     {
-        std::string dim_item;
-        std::stringstream ss(FLAGS_input_dims);     // NCHW
-        while (std::getline(ss, dim_item, ',')) {
-            dim_item = trim(dim_item);
-            if (dim_item.empty()) continue;
-            int32_t dim_value = std::stoi(dim_item);
-            if (input_dims.size() == 2 || input_dims.size() == 3) {
-                dim_value = ((dim_value + 31) / 32) * 32;    // 向上取整.
+        std::string dims_item;
+        std::stringstream ss(FLAGS_input_dims);     // name:NCHW;name:NCHW;name:NCHW;
+        while (std::getline(ss, dims_item, ';')) {
+            const auto pos = dims_item.find(':');
+            if (pos == std::string::npos) {
+                gflags::ShowUsageWithFlags(argv[0]);
+                std::cerr << "input dimensions not accept: " << FLAGS_input_dims << std::endl;
+                return -1;
             }
-            input_dims.push_back(dim_value);
+            std::string dim_item;
+            std::vector<int64_t> value;
+            std::string name = trim(dims_item.substr(0, pos));
+            std::stringstream s1(dims_item.substr(pos + 1));     // NCHW
+            while (std::getline(s1, dim_item, ',')) {
+                dim_item = trim(dim_item);
+                if (dim_item.empty()) continue;
+                int32_t dim_value = std::stoi(dim_item);
+                if (value.size() >= 2) {  // NCHW
+                    dim_value = ((dim_value + 31) / 32) * 32;    // 向上取整.
+                }
+                value.push_back(dim_value);
+            }
+            if (name.empty() || value.empty()) {
+                gflags::ShowUsageWithFlags(argv[0]);
+                std::cerr << "input dimensions not accept: " << dims_item << std::endl;
+                return -1;
+            }
+
+            dimensions[name] = value;
         }
     }
-    if (input_dims.size() != 4) {
-        gflags::ShowUsageWithFlags(argv[0]);
-        std::cerr << "input dimensions not accept: " << std::format("{}", input_dims) << std::endl;
-        return -1;
-    }
-    SPDLOG_INFO("input dimensions: {}", input_dims);
 
     Segmentation segmentation;
-    if (!segmentation.get_engine(model_file, input_dims)) {
+    if (!segmentation.get_engine(model_file, dimensions)) {
         gflags::ShowUsageWithFlags(argv[0]);
         std::cerr << "TensorRT no model file found" << std::endl;
         return -1;

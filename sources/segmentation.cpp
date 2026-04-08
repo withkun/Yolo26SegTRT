@@ -44,7 +44,7 @@ Segmentation::~Segmentation() {
     delete runtime_;
 }
 
-bool Segmentation::get_engine(const std::string &model_file, const std::vector<int64_t> &image_dims) {
+bool Segmentation::get_engine(const std::string &model_file, const std::map<std::string, std::vector<int64_t>> &dimensions) {
     std::filesystem::path file_path(model_file);
     const std::string extension = file_path.extension().string();
     if (extension == ".onnx") {
@@ -52,7 +52,7 @@ bool Segmentation::get_engine(const std::string &model_file, const std::vector<i
         if (std::filesystem::exists(file_path)) {
             return load_network_engine(file_path.string());
         }
-        return load_network_onnx(model_file, image_dims);
+        return load_network_onnx(model_file, dimensions);
     }
     if (extension == ".engine") {
         return load_network_engine(model_file);
@@ -60,11 +60,12 @@ bool Segmentation::get_engine(const std::string &model_file, const std::vector<i
     throw std::runtime_error("Unknown model extension: " + extension);
 }
 
-bool Segmentation::load_network_onnx(const std::string &model_file, const std::vector<int64_t> &image_dims) {
+bool Segmentation::load_network_onnx(const std::string &model_file, const std::map<std::string, std::vector<int64_t>> &dimensions) {
     const auto stage1 = std::chrono::system_clock::now();
     constexpr auto parse_verbose = static_cast<int32_t>(nvinfer1::ILogger::Severity::kINFO);
     // 显式批处理模式允许开发者明确指定输入张量的批处理维度(通常为第0维), 并支持更灵活的动态形状配置, 而隐式批处理模式则由TensorRT自动管理批处理维度.
-    constexpr auto creation_flags = (1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)); // 显式批处理模式
+    // 这意味着无论实际推理时的批次大小如何变化, 模型都会按照这个固定的批次大小进行推理. (Ignored: always "explicit batch" in TensorRT 10.0)
+    constexpr auto creation_flags = (1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH));
 
     const auto builder = std::unique_ptr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(NvLogger::GetInstance()));
     const auto network = std::unique_ptr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(creation_flags));
@@ -90,17 +91,19 @@ bool Segmentation::load_network_onnx(const std::string &model_file, const std::v
     //    config->setFlag(nvinfer1::BuilderFlag::kFP16);
     //}
 
-    if (!image_dims.empty()) {
-        nvinfer1::Dims kDims;
-        kDims.nbDims = static_cast<int32_t>(image_dims.size());;
-        for (size_t i = 0; i < image_dims.size(); ++i) {
-            kDims.d[i] = image_dims[i];
-        }
-
+    if (!dimensions.empty()) {
         auto *const profile = builder->createOptimizationProfile();
-        profile->setDimensions("images", nvinfer1::OptProfileSelector::kMIN, kDims);    // 最小尺寸
-        profile->setDimensions("images", nvinfer1::OptProfileSelector::kOPT, kDims);    // 最优尺寸
-        profile->setDimensions("images", nvinfer1::OptProfileSelector::kMAX, kDims);    // 最大尺寸
+        for (const auto &[name, value] : dimensions) {
+            nvinfer1::Dims kDims;
+            kDims.nbDims = static_cast<int32_t>(value.size());
+            for (size_t i = 0; i < value.size(); ++i) {
+                kDims.d[i] = value[i];
+            }
+
+            profile->setDimensions(name.data(), nvinfer1::OptProfileSelector::kMIN, kDims);    // 最小尺寸
+            profile->setDimensions(name.data(), nvinfer1::OptProfileSelector::kOPT, kDims);    // 最优尺寸
+            profile->setDimensions(name.data(), nvinfer1::OptProfileSelector::kMAX, kDims);    // 最大尺寸
+        }
         config->addOptimizationProfile(profile);
     }
 

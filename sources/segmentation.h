@@ -72,7 +72,7 @@ public:
     Segmentation(const Segmentation &) = delete;
     Segmentation &operator=(const Segmentation &) = delete;
 
-    bool                        get_engine(const std::string &model_file, const std::vector<int64_t> &image_dims);
+    bool                        get_engine(const std::string &model_file, const std::map<std::string, std::vector<int64_t>> &dimensions);
 
     void                        InitWorkers(int32_t threadNum);
     void                        StopWorkers();
@@ -99,7 +99,7 @@ protected:
 
 private:
     void inspect_engine(nvinfer1::INetworkDefinition *network) const;
-    bool load_network_onnx(const std::string &model_file, const std::vector<int64_t> &image_dims);
+    bool load_network_onnx(const std::string &model_file, const std::map<std::string, std::vector<int64_t>> &dimensions);
     bool load_network_engine(const std::string &engine_file);
     void get_model_dimensions();
 

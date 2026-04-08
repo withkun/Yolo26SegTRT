@@ -15,4 +15,5 @@ https://developer.nvidia.com/downloads/compute/machine-learning/tensorrt/10.16.0
 
 # 设置环境与执行:
 SET PATH=d:\3rd_party\opencv_4.13.0\x64\vc16\bin;d:\3rd_party\cuda12.8_lib\bin;d:\3rd_party\TensorRT-10.16.0.72\bin;
+
 YoloSegTRT.exe  -model_file=d:/WORK/YOLO26/runs/segment/train/weights/best_dyn.onnx  -input_dims=1,1,960,1280  -image_file=d:/WORK/测试图片/*.bmp;  -output_dir=runs/results > run.log 2>&1

@@ -18,9 +18,6 @@ endif()
 
 
 ################################################################################
-set(OpenCV_DIR d:/3rd_party/opencv_4.13.0)
-include(${OpenCV_DIR}/OpenCVConfig.cmake)
-
 set(CUDA_PATH d:/3rd_party/cuda12.8_lib)
 set(CUDA_SDK_ROOT_DIR ${CUDA_PATH})
 set(CUDA_TOOLKIT_ROOT_DIR ${CUDA_PATH})
@@ -31,6 +28,9 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 #enable_language(CUDA)   #绝不可省略: 这个命令告诉系统要使用CUDA语言.
 
 set(TENSOR_RT_ROOT d:/3rd_party/TensorRT-10.16.0.72)
+
+set(OpenCV_DIR d:/3rd_party/opencv_4.13.0)
+include(${OpenCV_DIR}/OpenCVConfig.cmake)
 
 ################################################################################
 add_subdirectory(deps/gflags-2.3.0)
