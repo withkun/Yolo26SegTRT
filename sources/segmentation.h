@@ -1,45 +1,12 @@
 #ifndef INC_SEGMENTATION_H_
 #define INC_SEGMENTATION_H_
 
-#include "NvInfer.h"
 #include "format_logger.h"
-#include "nvidia_logger.h"
+#include "nvinfer_utils.h"
+#include "segment_utils.h"
 
 #include <future>
 
-
-struct DetectResult {
-    int32_t     id;         //结果类型Id
-    float       confidence; //结果置信度
-    cv::Rect2f  box;        //目标边界框
-    cv::Mat     mask;       //目标掩码
-};
-using DetectResults = std::vector<DetectResult>;
-
-inline int32_t calc_dims_size(const nvinfer1::Dims &v) {
-    int32_t dim_size = 1;
-    for (int i = 0; i < v.nbDims; ++i) {
-        if (v.d[i] == 0 || v.d[i] == -1) {
-            std::cerr << std::format("invalid dims for calc size: {}", v) << std::endl;
-            throw std::runtime_error(std::format("invalid dims for calc size: {}", v));
-        }
-        dim_size *= static_cast<int32_t>(v.d[i]);
-    }
-    return dim_size;
-}
-
-inline std::string trim(const std::string &s) {
-    if (s.empty()) return s;
-
-    // 常见空白字符(C风格isspace范围)
-    static constexpr std::string WHITESPACE = " \t\n\r\f\v";
-
-    const size_t s_idx = s.find_first_not_of(WHITESPACE);
-    if (s_idx == std::string::npos) return ""; // 全空白
-
-    const size_t e_idx = s.find_last_not_of(WHITESPACE);
-    return s.substr(s_idx, (e_idx - s_idx) + 1);
-}
 
 // 线程安全的上下文管理示例
 struct Context {
@@ -72,7 +39,7 @@ public:
     Segmentation(const Segmentation &) = delete;
     Segmentation &operator=(const Segmentation &) = delete;
 
-    bool                        get_engine(const std::string &model_file, const std::map<std::string, std::vector<int64_t>> &dimensions);
+    bool                        get_engine(const std::string &model_file);
 
     void                        InitWorkers(int32_t threadNum);
     void                        StopWorkers();
@@ -98,9 +65,9 @@ protected:
     Context                     context_;
 
 private:
-    void inspect_engine(nvinfer1::INetworkDefinition *network) const;
-    bool load_network_onnx(const std::string &model_file, const std::map<std::string, std::vector<int64_t>> &dimensions);
+    bool load_network_onnx(const std::string &model_file);
     bool load_network_engine(const std::string &engine_file);
+    void inspect_engine(nvinfer1::INetworkDefinition *network) const;
     void get_model_dimensions();
 
     void create_context(Context &ctx) const;

@@ -1,5 +1,5 @@
-#ifndef __INC_FORMAT_CV_H
-#define __INC_FORMAT_CV_H
+#ifndef __INC_FORMAT_LOGGER_H
+#define __INC_FORMAT_LOGGER_H
 
 #include "spdlog/spdlog.h"
 #include "opencv2/opencv.hpp"
@@ -83,4 +83,4 @@ struct formatter<std::vector<T>> : std::formatter<std::string> {
     }
 };
 } //namespace std
-#endif //__INC_FORMAT_CV_H
+#endif //__INC_FORMAT_LOGGER_H

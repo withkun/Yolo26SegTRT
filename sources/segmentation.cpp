@@ -1,5 +1,5 @@
 #include "segmentation.h"
-#include "nvidia_logger.h"
+#include "nvinfer_utils.h"
 
 #include "NvOnnxParser.h"
 #include "NvInferPlugin.h"
@@ -44,7 +44,7 @@ Segmentation::~Segmentation() {
     delete runtime_;
 }
 
-bool Segmentation::get_engine(const std::string &model_file, const std::map<std::string, std::vector<int64_t>> &dimensions) {
+bool Segmentation::get_engine(const std::string &model_file) {
     std::filesystem::path file_path(model_file);
     const std::string extension = file_path.extension().string();
     if (extension == ".onnx") {
@@ -52,7 +52,7 @@ bool Segmentation::get_engine(const std::string &model_file, const std::map<std:
         if (std::filesystem::exists(file_path)) {
             return load_network_engine(file_path.string());
         }
-        return load_network_onnx(model_file, dimensions);
+        return load_network_onnx(model_file);
     }
     if (extension == ".engine") {
         return load_network_engine(model_file);
@@ -60,7 +60,7 @@ bool Segmentation::get_engine(const std::string &model_file, const std::map<std:
     throw std::runtime_error("Unknown model extension: " + extension);
 }
 
-bool Segmentation::load_network_onnx(const std::string &model_file, const std::map<std::string, std::vector<int64_t>> &dimensions) {
+bool Segmentation::load_network_onnx(const std::string &model_file) {
     const auto stage1 = std::chrono::system_clock::now();
     constexpr auto parse_verbose = static_cast<int32_t>(nvinfer1::ILogger::Severity::kINFO);
     // 显式批处理模式允许开发者明确指定输入张量的批处理维度(通常为第0维), 并支持更灵活的动态形状配置, 而隐式批处理模式则由TensorRT自动管理批处理维度.
@@ -90,22 +90,6 @@ bool Segmentation::load_network_onnx(const std::string &model_file, const std::m
     //if (builder->platformHasFastFp16()) {
     //    config->setFlag(nvinfer1::BuilderFlag::kFP16);
     //}
-
-    if (!dimensions.empty()) {
-        auto *const profile = builder->createOptimizationProfile();
-        for (const auto &[name, value] : dimensions) {
-            nvinfer1::Dims kDims;
-            kDims.nbDims = static_cast<int32_t>(value.size());
-            for (size_t i = 0; i < value.size(); ++i) {
-                kDims.d[i] = value[i];
-            }
-
-            profile->setDimensions(name.data(), nvinfer1::OptProfileSelector::kMIN, kDims);    // 最小尺寸
-            profile->setDimensions(name.data(), nvinfer1::OptProfileSelector::kOPT, kDims);    // 最优尺寸
-            profile->setDimensions(name.data(), nvinfer1::OptProfileSelector::kMAX, kDims);    // 最大尺寸
-        }
-        config->addOptimizationProfile(profile);
-    }
 
     const auto stage3 = std::chrono::system_clock::now();
     SPDLOG_INFO("TensorRT model optimize success, usage: {}μs", std::chrono::duration_cast<std::chrono::microseconds>(stage3 - stage2).count());
@@ -197,7 +181,7 @@ void Segmentation::get_model_dimensions() {
     INPUT_C_ = static_cast<int32_t>(input_dims_.d[1]);      // 3
     INPUT_H_ = static_cast<int32_t>(input_dims_.d[2]);      // 1280
     INPUT_W_ = static_cast<int32_t>(input_dims_.d[3]);      // 1920
-    INPUT_SIZE_ = calc_dims_size(input_dims_);
+    INPUT_SIZE_ = DimsInBytes(input_dims_);
 
     // 获取输出尺寸并分配GPU内存 (nvinfer1::Dims{nbDims=3, d={1, 300, 38, 0, 0, 0, 0, 0}})
     output1_dims_ = engine_->getTensorShape(OUTPUT1_BLOB_NAME);
@@ -205,7 +189,7 @@ void Segmentation::get_model_dimensions() {
     PROBES_N_ = static_cast<int32_t>(output1_dims_.d[0]);   // 1
     PROBES_H_ = static_cast<int32_t>(output1_dims_.d[1]);   // 300
     PROBES_W_ = static_cast<int32_t>(output1_dims_.d[2]);   // 38
-    OUTPUT1_SIZE_ = calc_dims_size(output1_dims_);
+    OUTPUT1_SIZE_ = DimsInBytes(output1_dims_);
 
     // 获取输出尺寸并分配GPU内存 (nvinfer1::Dims{nbDims=4, d={1, 32, 320, 480, 0, 0, 0, 0}})
     output2_dims_ = engine_->getTensorShape(OUTPUT2_BLOB_NAME);
@@ -214,7 +198,7 @@ void Segmentation::get_model_dimensions() {
     PROTOS_C_ = static_cast<int32_t>(output2_dims_.d[1]);   // 32
     PROTOS_H_ = static_cast<int32_t>(output2_dims_.d[2]);   // 320
     PROTOS_W_ = static_cast<int32_t>(output2_dims_.d[3]);   // 480
-    OUTPUT2_SIZE_ = calc_dims_size(output2_dims_);
+    OUTPUT2_SIZE_ = DimsInBytes(output2_dims_);
 
     // 创建同步推理资源.
     create_context(context_);

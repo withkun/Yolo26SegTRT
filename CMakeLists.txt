@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 project(YoloSegTRT LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 23)
 
 
 ################################################################################
@@ -18,19 +18,18 @@ endif()
 
 
 ################################################################################
-set(CUDA_PATH d:/3rd_party/cuda12.8_lib)
+set(CUDA_PATH d:/3rd_party/cuda_v13.3_lib)
 set(CUDA_SDK_ROOT_DIR ${CUDA_PATH})
-set(CUDA_TOOLKIT_ROOT_DIR ${CUDA_PATH})
 set(CMAKE_CUDA_COMPILER ${CUDA_PATH}/bin/nvcc.exe)
 set(CMAKE_CUDA_ARCHITECTURES 86)
-set(CMAKE_CUDA_STANDARD 11)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-#enable_language(CUDA)   #绝不可省略: 这个命令告诉系统要使用CUDA语言.
+set(CMAKE_CUDA_STANDARD 20)
 
-set(TENSOR_RT_ROOT d:/3rd_party/TensorRT-10.16.0.72)
+set(TENSOR_RT_ROOT d:/3rd_party/TensorRT-10.16.1.11)
 
 set(OpenCV_DIR d:/3rd_party/opencv_4.13.0)
 include(${OpenCV_DIR}/OpenCVConfig.cmake)
+
 
 ################################################################################
 add_subdirectory(deps/gflags-2.3.0)
@@ -40,11 +39,16 @@ set(deps_libraries
     gflags spdlog::spdlog_header_only
 )
 
+
 ################################################################################
 add_executable(${PROJECT_NAME}
     sources/format_logger.h
-    sources/nvidia_logger.h
-    sources/nvidia_logger.cpp
+    sources/media_reader.h
+    sources/media_reader.cpp
+    sources/nvinfer_utils.h
+    sources/nvinfer_utils.cpp
+    sources/segment_utils.h
+    sources/segment_utils.cpp
     sources/segmentation.h
     sources/segmentation.cpp
 
@@ -57,7 +61,8 @@ configure_file(version.rc.in ${PROJECT_BINARY_DIR}/versionInfo.rc)
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/sources
     ${CMAKE_CURRENT_SOURCE_DIR}/deps
-    ${CUDA_TOOLKIT_ROOT_DIR}/include
+    ${CUDA_SDK_ROOT_DIR}/include
+    ${ONNX_RUNTIME_ROOT}/include
     ${TENSOR_RT_ROOT}/include
     ${OpenCV_INCLUDE_DIRS}
 )
@@ -77,8 +82,8 @@ target_link_options(${PROJECT_NAME} PRIVATE
 )
 
 target_link_directories(${PROJECT_NAME} PRIVATE
-    ${TlLib_Dir_TlAppV2}/lib/$<CONFIG>
-    ${CUDA_TOOLKIT_ROOT_DIR}/lib/x64
+    ${CUDA_SDK_ROOT_DIR}/lib/x64
+    ${ONNX_RUNTIME_ROOT}/lib
     ${TENSOR_RT_ROOT}/lib
 )
 
@@ -87,6 +92,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     nvinfer_10 nvonnxparser_10 nvinfer_plugin_10
     ${OpenCV_LIBS}
     ${deps_libraries}
+)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    PDB_OUTPUT_DIRECTORY     "${CMAKE_CURRENT_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build-relwithdebinfo"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build-relwithdebinfo"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build-relwithdebinfo"
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

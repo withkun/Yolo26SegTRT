@@ -1,4 +1,4 @@
-#include "nvidia_logger.h"
+#include "nvinfer_utils.h"
 
 
 NvLogger &NvLogger::GetInstance() {
