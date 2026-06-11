@@ -23,26 +23,19 @@ struct formatter<nvinfer1::Dims> : std::formatter<std::string> {
         return std::formatter<std::string>::format(ss.str(), ctx);
     }
 };
-
-//template<>
-//struct formatter<nvinfer1::Dims> {
-//    template <typename FormatContext>
-//    auto format(const nvinfer1::Dims &val, FormatContext &ctx) const {
-//        std::stringstream ss;
-//        ss << "[";
-//        for (size_t i = 0; i < val.nbDims; ++i) {
-//            if (i != 0) { ss << ", "; }
-//            ss << val.d[i];
-//        }
-//        ss << "]";
-//        return std::format_to(ctx.out(), "{}", ss.str());
-//    }
-//
-//    constexpr auto parse(std::format_parse_context &ctx) -> decltype(ctx.begin()) {
-//        return ctx.begin();
-//    }
-//};
 } //namespace std
+
+inline bool operator<(const nvinfer1::Dims &lsh, const nvinfer1::Dims &rsh) {
+    if (lsh.nbDims < rsh.nbDims) {
+        return true;
+    }
+    for (int32_t i = 0; i < lsh.nbDims; i++) {
+        if (lsh.d[i] < rsh.d[i]) {
+            return true;
+        }
+    }
+    return false;
+}
 
 struct DimsCompare {
     bool operator()(const nvinfer1::Dims &lsh, const nvinfer1::Dims &rsh) const {

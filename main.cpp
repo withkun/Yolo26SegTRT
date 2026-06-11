@@ -2,7 +2,7 @@
 #include <filesystem>
 
 #include "media_reader.h"
-#include "segmentation.h"
+#include "segment_engine.h"
 
 #include "spdlog/spdlog.h"
 #include "spdlog/async.h"
@@ -78,10 +78,9 @@ int main(int argc, char **argv) {
     SPDLOG_INFO("TensorRT total files: {}", image_generator.count());
 
 
-    Segmentation segmentation;
+    SegmentEngine segmentation;
     if (!segmentation.get_engine(model_file)) {
         gflags::ShowUsageWithFlags(argv[0]);
-        std::cerr << "TensorRT no model file found" << std::endl;
         return -1;
     }
 

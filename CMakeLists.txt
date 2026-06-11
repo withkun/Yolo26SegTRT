@@ -25,9 +25,9 @@ set(CMAKE_CUDA_ARCHITECTURES 86)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 20)
 
-set(TENSOR_RT_ROOT d:/3rd_party/TensorRT-10.16.1.11)
+set(TENSOR_RT_ROOT d:/3rd_party/TensorRT-11.0.0.114)
 
-set(OpenCV_DIR d:/3rd_party/opencv_4.13.0)
+set(OpenCV_DIR d:/3rd_party/opencv_5.0.0)
 include(${OpenCV_DIR}/OpenCVConfig.cmake)
 
 
@@ -49,8 +49,10 @@ add_executable(${PROJECT_NAME}
     sources/nvinfer_utils.cpp
     sources/segment_utils.h
     sources/segment_utils.cpp
-    sources/segmentation.h
-    sources/segmentation.cpp
+    sources/segment_context.h
+    sources/segment_context.cpp
+    sources/segment_engine.h
+    sources/segment_engine.cpp
 
     main.cpp
     application.rc
@@ -89,7 +91,7 @@ target_link_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     cudart cublas
-    nvinfer_10 nvonnxparser_10 nvinfer_plugin_10
+    nvinfer_11 nvonnxparser_11 nvinfer_plugin_11
     ${OpenCV_LIBS}
     ${deps_libraries}
 )

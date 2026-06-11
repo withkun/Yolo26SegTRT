@@ -27,6 +27,7 @@ void DrawPred(cv::Mat &image, const std::vector<DetectResult> &results) {
     const int32_t thickness = 1;
     const int32_t fontFace = cv::FONT_HERSHEY_SIMPLEX;
     const int32_t lineType = cv::LINE_8;
+    const cv::Vec3i red(0, 0, 255);
 
     // 转三通道绘图
     const static std::vector<cv::Scalar> LABEL_COLORMAP = label_colormap();
@@ -36,22 +37,20 @@ void DrawPred(cv::Mat &image, const std::vector<DetectResult> &results) {
 
     cv::Mat all_mask = image.clone();
     for (auto idx = 0; idx < results.size(); ++idx) {
-        const auto &[id, confidence, box, mask] = results[idx];
-        const auto color = LABEL_COLORMAP[idx % LABEL_COLORMAP.size()];
-        cv::rectangle(image, box, color, thickness, lineType);
+        const auto &[score, label, bbox, mask] = results[idx];
+        const auto &color = LABEL_COLORMAP[idx % LABEL_COLORMAP.size()];
+        cv::rectangle(image, bbox, color, thickness, lineType);
 
         // mask是一个与矩阵box大小相同的单通道二值掩码
-        int32_t x1 = static_cast<int32_t>(box.x);
-        int32_t y1 = static_cast<int32_t>(box.y);
         if (!mask.empty()) {
-            all_mask(box).setTo(color, mask);
+            all_mask(bbox).setTo(color, mask);
         }
 
         int32_t baseLine;
-        std::string text = std::format("{}:{:.3f}", id, confidence);
-        cv::Size textSize = cv::getTextSize(text, fontFace, fontScale, thickness, &baseLine);
-        y1 = std::max(y1, textSize.height);
-        cv::putText(image, text, cv::Point(x1, y1), fontFace, fontScale, color, thickness, lineType);
+        const std::string text = std::format("{}:{:.3f}", label, score);
+        const cv::Size textSize = cv::getTextSize(text, fontFace, fontScale, thickness, &baseLine);
+        const cv::Point point(bbox.x, std::max(static_cast<int>(bbox.y), textSize.height));
+        cv::putText(image, text, point, fontFace, fontScale, color, thickness, lineType);
     }
 
     cv::addWeighted(image, 0.7, all_mask, 0.3, 0, image); //将mask加在原图上面

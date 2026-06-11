@@ -1,8 +1,6 @@
 #include "media_reader.h"
 #include "segment_utils.h"
 
-#include <ranges>
-
 
 // 递归展开通配符路径, 返回所有匹配文件
 std::vector<std::string> expandGlob(const std::string &pattern) {
@@ -61,10 +59,10 @@ std::generator<FrameData> MediaReader::read_image_list() {
 // 核心接口：返回生成器, 外部直接遍历
 std::generator<FrameData> MediaReader::frames() {
     if (all_files_.size() > 1) {
-        // 协程: 委托给内部图片目录读取逻辑
+        // 协程: 委托给目录读取逻辑.
         co_yield std::ranges::elements_of(read_image_list());
     } else {
-        // 协程: 委托给内部视频读取逻辑
+        // 协程: 委托给视频读取逻辑.
         co_yield std::ranges::elements_of(read_video_file());
     }
 }
