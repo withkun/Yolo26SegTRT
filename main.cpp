@@ -9,26 +9,30 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 
-#include "gflags/gflags.h"
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/utils/logger.hpp"
 
 
-DEFINE_bool(log_console, true, "show log console");
-DEFINE_string(model_file, "best.onnx", "model file format of onnx or engine");
-DEFINE_string(image_file, "images/*.png", "image file name or pattern");
-DEFINE_string(output_dir, "results/", "output result directory");
-
+// 1. 参数里面有@是按参数索引获取, 比如 @video 不用参数修饰符, 命令行输入: main.exe d:\test.mp4
+// 2. 参数里没有@需要加参数修饰符, 比如 path 需要加--修饰符, 命令行输入: main.exe --path d:\test.mp4
+const std::string args{
+    "{model_file   | best.onnx          | model file format of onnx or engine                   }"
+    "{input_dims   |                    | dynamic image dimensions as NCHW(name:1,1,960,1280;1,1,1216,1920;1,1,1216,1920)}"
+    "{image_dims   |                    | current image dimensions as NCHW(1,1,1216,1920)       }"
+    "{image_file   | images/*.png       | image file name or pattern                            }"
+    "{output_dir   | results/           | result output directory                               }"
+    "{log_console  | true               | show log console                                      }"
+};
 
 // 初始化日志系统
-static void slogInit() {
+static void slogInit(const bool console) {
     std::vector<spdlog::sink_ptr> sinks;
     try {
         // 循环日志rotating_sink
         const std::string logFile("tlvision.log");
         sinks.push_back(std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logFile, 50*1024*1024, 100, false));
         // 控制台日志console_sink
-        if (FLAGS_log_console) {
+        if (console) {
             sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
         }
     } catch (const spdlog::spdlog_ex &ex) {
@@ -52,26 +56,24 @@ static void slogInit() {
     SPDLOG_INFO("Program started ...");
 }
 
-
 //https://blog.51cto.com/u_16099316/10633913
 //https://developer.aliyun.com/article/1143198
 //https://cloud.tencent.com/developer/article/2315250
 int main(int argc, char **argv) {
     // YoloSegTRT.exe "C:/WORK/YoloSegTRT/yolo11n-seg.onnx" "C:/WORK/YoloSegTRT/dog.jpg"
     // YoloSegTRT.exe "C:/WORK/YoloSegTRT/yolov8n-seg.engine" "C:/WORK/YoloSegTRT/test3.mp4"
-    // "d:/WORK/007.砂石骨料/stone/runs/segment/train2/weights/best.onnx" "d:/WORK/007.砂石骨料/20240513_all/2D相机采集图像/0_20210629_160940_0_12_STONE_E100_G100_H1624954180242_CTS1305342964_BF0.bmp"
-    gflags::SetUsageMessage("Usage: example -model_file=name.{onnx, engine} -image_file=images/*.png -output_dir=results");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-    const std::string model_file(FLAGS_model_file);
-    const std::string image_file(FLAGS_image_file);
+    cv::CommandLineParser parser(argc, argv, args);
     cv::utils::logging::setLogLevel(cv::utils::logging::LogLevel::LOG_LEVEL_WARNING);
-    slogInit();
-    SPDLOG_INFO("TensorRT YOLO26🚀实例分割");
+    slogInit(parser.get<bool>("log_console"));
+
+    const std::string model_file(parser.get<std::string>("model_file"));
+    const std::string image_file(parser.get<std::string>("image_file"));
+    const std::string output_dir(parser.get<std::string>("output_dir"));
+    SPDLOG_INFO("TensorRT YOLO26🚀实例分割: {}", model_file);
 
     MediaReader image_generator(image_file);
     if (image_generator.empty()) {
-        gflags::ShowUsageWithFlags(argv[0]);
+        parser.printMessage();
         std::cerr << "===> TensorRT no image file found: " << image_file << std::endl;
         return -1;
     }
@@ -80,7 +82,7 @@ int main(int argc, char **argv) {
 
     SegmentEngine segmentation;
     if (!segmentation.get_engine(model_file)) {
-        gflags::ShowUsageWithFlags(argv[0]);
+        parser.printMessage();
         return -1;
     }
 
@@ -107,10 +109,10 @@ int main(int argc, char **argv) {
 
         cv::imshow("YOLO26+TensorRT", frame.image);
 
-        if (!std::filesystem::exists(std::filesystem::path(FLAGS_output_dir))) {
-            std::filesystem::create_directories(FLAGS_output_dir);
+        if (!std::filesystem::exists(std::filesystem::path(output_dir))) {
+            std::filesystem::create_directories(output_dir);
         }
-        std::filesystem::path path = FLAGS_output_dir / std::filesystem::path(frame.source).filename();
+        std::filesystem::path path = output_dir / std::filesystem::path(frame.source).filename();
         cv::imwrite(path.string(), frame.image);
 
         if (cv::waitKey(1) == VK_ESCAPE) {

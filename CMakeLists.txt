@@ -32,11 +32,10 @@ include(${OpenCV_DIR}/OpenCVConfig.cmake)
 
 
 ################################################################################
-add_subdirectory(deps/gflags-2.3.0)
 add_subdirectory(deps/spdlog-1.17.0)
 
 set(deps_libraries
-    gflags spdlog::spdlog_header_only
+    spdlog::spdlog_header_only
 )
 
 
@@ -101,8 +100,4 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build-relwithdebinfo"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build-relwithdebinfo"
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build-relwithdebinfo"
-)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    OUTPUT_NAME ${PROJECT_NAME}
 )

@@ -47,10 +47,6 @@ protected:
     cudaStream_t                stream_{nullptr};
     std::unique_ptr<nvinfer1::IExecutionContext> context_{nullptr};
 
-    const int32_t               input_index_{0};
-    const int32_t               probe_index_{1};
-    const int32_t               proto_index_{2};
-
     nvinfer1::Dims              input_dims_{};                  // nvinfer1::Dims{nbDims=4, d={1, 1, 1024, 1024, 0, 0, 0, 0}}
     nvinfer1::Dims              probe_dims_{};                  // nvinfer1::Dims{nbDims=3, d={1, 960, 38, 0, 0, 0, 0, 0}}
     nvinfer1::Dims              proto_dims_{};                  // nvinfer1::Dims{nbDims=4, d={1, 32, 256, 256, 0, 0, 0, 0}}
